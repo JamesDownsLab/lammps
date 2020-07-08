@@ -27,10 +27,13 @@ public:
 
 private:
     double fvalue;
+    double fstart;
+    double fend;
     int interval, seed, iregion;
     char *fstr;
     int fstyle;
     double dt;
+    double forceConstant;
 
     class RanMars *random;
 };

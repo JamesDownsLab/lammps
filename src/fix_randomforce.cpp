@@ -16,7 +16,7 @@
 #include <cmath>
 #include "domain.h"
 #include "region.h"
-
+#include <iostream>
 using namespace LAMMPS_NS;
 using namespace FixConst;
 
@@ -24,21 +24,24 @@ enum{NONE, CONSTANT, EQUAL, ATOM};
 
 FixRandomForce::FixRandomForce(LAMMPS *lmp, int narg, char **arg) :
         Fix(lmp, narg, arg),
-        fvalue(NULL), interval(NULL), seed(NULL), random(NULL)
+        fvalue(NULL), interval(NULL), seed(NULL), random(NULL), forceConstant(NULL)
 {
     if (narg < 3) error->all(FLERR, "Illegal fix random force command");
 
-    if (strstr(arg[3], "v_") == arg[3]) {
-        int n = strlen(&arg[3][2]) + 1;
-        fstr = new char[n];
-        strcpy(fstr, &arg[3][2]);
-    } else {
-        fvalue = force->numeric(FLERR, arg[3]);
-        fstyle = CONSTANT;
-    }
+//    if (strstr(arg[3], "v_") == arg[3]) {
+//        int n = strlen(&arg[3][2]) + 1;
+//        fstr = new char[n];
+//        strcpy(fstr, &arg[3][2]);
+//    } else {
+//        fstart = force->numeric(FLERR, arg[3]);
+//        fstyle = CONSTANT;
+//    }
 
-    interval = force->inumeric(FLERR, arg[4]);
-    seed = force->inumeric(FLERR, arg[5]);
+    fstart = force->numeric(FLERR, arg[3]);
+    fend = force->numeric(FLERR, arg[4]);
+
+    interval = force->inumeric(FLERR, arg[5]);
+    seed = force->inumeric(FLERR, arg[6]);
 
     if (interval <= 0) error->all(FLERR, "Fix random force interval must be > 0");
     if (seed <= 0) error->all(FLERR, "Fix random force seed must be > 0");
@@ -63,17 +66,8 @@ int FixRandomForce::setmask() {
 
 void FixRandomForce::init()
 {
-    // check variables
-//    if (fstr) {
-//        fvalue = input->variable->find(fstr);
-//        if (fvalue < 0)
-//            error->all(FLERR,"Variable name for fix addRandomForce does not exist");
-//        if (input->variable->equalstyle(fvalue)) fstyle = EQUAL;
-//        else if (input->variable->atomstyle(fvalue)) fstyle = ATOM;
-//        else error->all(FLERR,"Variable for fix addRandomForce is invalid style");
-//    }
-
     dt = update->dt;
+    forceConstant = sqrt(1/(dt*interval));
 }
 
 void FixRandomForce::post_force(int vflag)
@@ -83,6 +77,10 @@ void FixRandomForce::post_force(int vflag)
     int *mask = atom->mask;
     imageint *image = atom->image;
     int nlocal = atom->nlocal;
+
+    double delta = update->ntimestep - update->beginstep;
+    if (delta != 0.0) delta /= update->endstep - update->beginstep;
+    fvalue = sqrt(fstart + delta * (fend-fstart));
 
     if (update->ntimestep % interval) return;
 
@@ -96,14 +94,9 @@ void FixRandomForce::post_force(int vflag)
     for (int i = 0; i < nlocal; i++){
         if (mask[i] & groupbit) {
             if (region && !region->match(x[i][0],x[i][1],x[i][2])) continue;
-            double a = random->uniform();
-            double b = random->uniform();
-            double K = sqrt(-4 * log(a) * fvalue / dt);
-            double xvalue = K * cos(2*3.141*b);
-            double yvalue = K * sin(2*3.141*b);
             domain->unmap(x[i], image[i], unwrap);
-            f[i][0] += xvalue;
-            f[i][1] += yvalue;
+            f[i][0] += forceConstant*fvalue*random->gaussian();
+            f[i][1] += forceConstant*fvalue*random->gaussian();
         }
     }
 
