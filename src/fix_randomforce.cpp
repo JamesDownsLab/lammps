@@ -28,15 +28,6 @@ FixRandomForce::FixRandomForce(LAMMPS *lmp, int narg, char **arg) :
 {
     if (narg < 3) error->all(FLERR, "Illegal fix random force command");
 
-//    if (strstr(arg[3], "v_") == arg[3]) {
-//        int n = strlen(&arg[3][2]) + 1;
-//        fstr = new char[n];
-//        strcpy(fstr, &arg[3][2]);
-//    } else {
-//        fstart = force->numeric(FLERR, arg[3]);
-//        fstyle = CONSTANT;
-//    }
-
     fstart = force->numeric(FLERR, arg[3]);
     fend = force->numeric(FLERR, arg[4]);
 
@@ -84,19 +75,13 @@ void FixRandomForce::post_force(int vflag)
 
     if (update->ntimestep % interval) return;
 
-    Region *region = NULL;
-    if (iregion >= 0) {
-        region = domain->regions[iregion];
-        region->prematch();
-    }
 
     double unwrap[3];
     for (int i = 0; i < nlocal; i++){
         if (mask[i] & groupbit) {
-            if (region && !region->match(x[i][0],x[i][1],x[i][2])) continue;
             domain->unmap(x[i], image[i], unwrap);
-            f[i][0] += forceConstant*fvalue*random->gaussian();
-            f[i][1] += forceConstant*fvalue*random->gaussian();
+            f[i][0] += forceConstant*fvalue*random->uniform();
+            f[i][1] += forceConstant*fvalue*random->uniform();
         }
     }
 
