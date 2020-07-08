@@ -16,6 +16,7 @@
 #include <cmath>
 #include "domain.h"
 #include "region.h"
+#include "group.h"
 #include <iostream>
 using namespace LAMMPS_NS;
 using namespace FixConst;
@@ -73,15 +74,29 @@ void FixRandomForce::post_force(int vflag)
     if (delta != 0.0) delta /= update->endstep - update->beginstep;
     fvalue = sqrt(fstart + delta * (fend-fstart));
 
+    bigint count = group->count(igroup);
+
     if (update->ntimestep % interval) return;
 
-
+    double fx_all = 0;
+    double fy_all = 0;
     double unwrap[3];
     for (int i = 0; i < nlocal; i++){
         if (mask[i] & groupbit) {
             domain->unmap(x[i], image[i], unwrap);
-            f[i][0] += forceConstant*fvalue*random->uniform();
-            f[i][1] += forceConstant*fvalue*random->uniform();
+            double fx = forceConstant*fvalue*random->gaussian();
+            double fy = forceConstant*fvalue*random->gaussian();
+            f[i][0] += fx;
+            f[i][1] += fx;
+            fx_all += fx;
+            fy_all += fy;
+        }
+    }
+    // Set total force to zero
+    for (int i = 0; i<nlocal; i++){
+        if (mask[i] & groupbit) {
+            f[i][0] -= fx_all/count;
+            f[i][1] -= fy_all/count;
         }
     }
 
