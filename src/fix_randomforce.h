@@ -24,6 +24,8 @@ public:
 
     virtual void post_force(int);
 
+    virtual double compute_scalar();
+
 
 private:
     double fvalue;

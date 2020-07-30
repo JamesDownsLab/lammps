@@ -29,6 +29,8 @@ FixRandomForce::FixRandomForce(LAMMPS *lmp, int narg, char **arg) :
 {
     if (narg < 3) error->all(FLERR, "Illegal fix random force command");
 
+    scalar_flag = 1;
+
     fstart = force->numeric(FLERR, arg[3]);
     fend = force->numeric(FLERR, arg[4]);
 
@@ -100,4 +102,8 @@ void FixRandomForce::post_force(int vflag)
         }
     }
 
+}
+
+double FixRandomForce::compute_scalar() {
+    return fvalue;
 }
